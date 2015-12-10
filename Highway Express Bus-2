@@ -1,0 +1,93 @@
+#include <cstdio>
+#include <algorithm>
+#include <iostream>
+#include <queue>
+#include <vector>
+#include <limits.h>
+#include <math.h>
+#include <stack>
+using namespace std;
+
+//
+//  This code uses breadth-first-search algorithm
+//
+
+
+struct state{
+int co,ch,ci;
+void set(int _co,int _ch,int _ci)
+{
+	co=_co;
+	ch=_ch;
+	ci=_ci;
+}
+};
+
+
+int bf[101][101];
+int mc[101][10];
+int inf = INT_MAX/2;
+int main()
+{
+	while(true)
+	{
+	int c,n,m,s,d;
+	int a,b,f;
+	scanf("%d%d%d%d%d",&c,&n,&m,&s,&d);
+	if(n==0) break;
+	
+	for(int i=0;i<101;i++)
+	for(int j=0;j<101;j++)
+	bf[i][j]=inf;
+	
+	for(int i=0;i<101;i++)
+	for(int j=0;j<10;j++)
+	mc[i][j]=inf;
+	
+	for(int i=0;i<m;i++)
+	{
+		scanf("%d%d%d",&a,&b,&f);
+		bf[a][b] = f;
+		bf[b][a] = f;
+	}
+	queue<state> q;
+	int mi=inf;
+	state st,p;
+	st.set(0,c,s);
+	
+	q.push(st);
+	while(!q.empty())
+	{
+		st = q.front();
+		//printf("%d %d %d\n",st.co,st.ch,st.ci);
+		
+		if(mc[st.ci][st.ch]<st.co)
+		{
+			q.pop();continue;
+		}
+		else
+			mc[st.ci][st.ch]=st.co;
+		
+		if(st.ci == d)
+			mi = min(st.co,mi);
+		else if(st.co < mi)
+		{
+			for(int i=1;i<=n;i++)
+				if(bf[st.ci][i] != inf)
+				{
+					p.set(st.co + bf[st.ci][i], st.ch, i);
+					q.push(p);
+				
+					if(st.ch>0)
+					{
+						p.set(st.co+bf[st.ci][i] / 2, st.ch - 1, i);
+						q.push(p);
+					}
+				}
+		}
+		
+		q.pop();
+	}
+		printf("%d\n",mi);
+	}
+}
