@@ -1,3 +1,2 @@
 # CompetitivePrograming
-
 ForContest codes
