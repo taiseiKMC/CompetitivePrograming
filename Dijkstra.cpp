@@ -1,80 +1,112 @@
-#include <cstdio>
-#include <algorithm>
-#include <iostream>
-#include <stack>
+/*
+*使い方
+Distを好きな辺のコストの型に置換する
+vertexに辺の情報を与える 
+(vertex[a].push_back(PID(b,c))でaからbへコストcの有向辺を張る)
+dijkstra(i,j)でiからjへの最小コストを返す。
+dijkstra(i)でshortestにiからの最小コストが格納される。
+dijkstraを実行した後にget_pathを実行すると、パスが返ってくる
+*/
+
+
 #include <queue>
-#include <vector>
-#include <limits.h>
-#include <math.h>
+
 using namespace std;
+typedef long double ld;
+typedef double Dist;
 
-typedef long long LL;
-typedef pair<int, int> PII;
+const int INF = 1e9;
+const ld EPS = 1e-11;
 
-typedef int Dis;
-typedef pair<int, Dis> PID;
-
-
-#define FOR(i,a,b) for(int i=(a);i<(b);++i)
-#define REP(i,n)  FOR(i,0,n)
-#define CLR(a) memset((a), 0 ,sizeof(a))
-
-//
-// Dijkstra algorithm  
-//
+const int V=100000;//要素数 要初期化
+struct Edge;
+vector<vector<Edge> > vertex(V);
+vector<Dist> shortest(V, INF);
+vector<int> prev(V);
 
 
-struct status
+struct Status
 {
-	int edge;Dis dis;
-	status(){}
-	status(int _edge,Dis _dis)
+	int pos; Dist dist;
+	Status():pos(0),dist(0) 
+	{}
+	Status(int pos_,Dist dist_):pos(pos_),dist(dist_)
+	{}
+	void set(int pos_,Dist dist_)
 	{
-		edge = _edge;
-		dis = _dis;
+		pos = pos_;
+		dist = dist_;
 	}
-	void Set(int _edge,Dis _dis)
+	bool operator >(const Status &st)const
 	{
-		edge = _edge;
-		dis = _dis;
-	}
-	bool operator >(const status &st)const
-	{
-		return dis > st.dis;
+		return dist > st.dist;
 	}
 };
-int V;
-int inf = INT_MAX/2;
-vector<PID> vertex[V];
-Dis dist[V];
-priority_queue<status, vector<status>, greater<status> > q;
-void Dikstra()
+struct Edge
 {
-	//dist should be initialized!!
-	//vertex should be informed of.
-	//q have been pushed first para.
-	//q.push(status(0,0));
-	status sta,p;
-	int to;Dis cos;
-	while(!q.empty())
+	int to; Dist dist;
+	Edge():to(0),dist(0) 
+	{}
+	Edge(int to_,Dist dist_):to(to_),dist(dist_)
+	{}
+	void set(int to_,Dist dist_)
 	{
-		sta = q.top();
-		q.pop();
-		if(dist[sta.edge] < sta.dis) continue;
-		REP(i,vertex[sta.edge].size())
+		to = to_;
+		dist = dist_;
+	}
+	bool operator >(const Edge &ed)const
+	{
+		return dist > ed.dist;
+	}
+};
+//Shortest cost from i to j.
+int dijkstra(int i, int j)
+{
+	priority_queue<Status, vector<Status>, greater<Status> > que;
+	que.push(Status(i, 0));
+	for(int k=0;k<V;k++)
+		shortest[k]=INF;
+	shortest[i]=0;
+
+	Status sta, tmp;
+	int to;
+	Dist dist;
+	while(!que.empty())
+	{
+		sta = que.top();
+		que.pop();
+		if(shortest[sta.pos] < sta.dist) continue;
+		for(int k=0;k<vertex[sta.pos].size();k++)
 		{
-			to = vertex[sta.edge][i].first;
-			cos = vertex[sta.edge][i].second;
-			if(dist[to] > dist[sta.edge] + cos)
+			to = vertex[sta.pos][k].to;
+			dist = vertex[sta.pos][k].dist;
+			if(shortest[to] > shortest[sta.pos] + dist)
 			{
-				dist[to] = dist[sta.edge] + cos;
-				p.Set(to,dist[to]);
-				q.push(p);
+				shortest[to] = shortest[sta.pos] + dist;
+				prev[to] = sta.pos;
+				tmp.set(to, shortest[to]);
+				que.push(tmp);
 			}
 		}
 		
 	}
-    
+	
+	return shortest[j];
 }
-
-
+void dijkstra(int i)
+{
+	dijkstra(i, 0);
+}
+vector<int> get_path(int i,int j)
+{
+	vector<int> rev;
+	rev.push_back(j);
+	int p=j;
+	while(p!=i)
+	{
+		p = prev[p];
+		rev.push_back(p);
+	}
+	reverse(rev.begin(),rev.end());
+	return rev;
+}
