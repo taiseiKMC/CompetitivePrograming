@@ -1,112 +1,94 @@
-/*
+/* verified AOJ Highway Express Bus
 *使い方
 Distを好きな辺のコストの型に置換する
-vertexに辺の情報を与える 
-(vertex[a].push_back(PID(b,c))でaからbへコストcの有向辺を張る)
-dijkstra(i,j)でiからjへの最小コストを返す。
-dijkstra(i)でshortestにiからの最小コストが格納される。
-dijkstraを実行した後にget_pathを実行すると、パスが返ってくる
+Graph型変数vに辺の情報を与える
+(v[a].push_back(PID(b,c))でaからbへコストcの有向辺を張る)
+dijkstra(i,v):iから任意の点への最小コストのベクター
+dijkstra(i,j,v):iからjへの最小コスト
+dijkstra(i,j,v,path):iからjへの最小コスト+pathにiからjへの最小パス
+dijkstra(i,v,preVec):iから任意の点への最小コストのベクター
+get_path(i,j,preVec)でiからjへの最小パスが求まる
 */
 
 
-#include <queue>
+#include <bits/stdc++.h>
 
 using namespace std;
-typedef long double ld;
-typedef double Dist;
 
-const int INF = 1e9;
-const ld EPS = 1e-11;
+typedef int Dist;
 
-const int V=100000;//要素数 要初期化
 struct Edge;
-vector<vector<Edge> > vertex(V);
-vector<Dist> shortest(V, INF);
-vector<int> prev(V);
+typedef vector<Edge> Edges;
+typedef vector<Edges> Graph;
+const int INF = 1e9;
 
-
-struct Status
-{
-	int pos; Dist dist;
-	Status():pos(0),dist(0) 
-	{}
-	Status(int pos_,Dist dist_):pos(pos_),dist(dist_)
-	{}
-	void set(int pos_,Dist dist_)
-	{
-		pos = pos_;
-		dist = dist_;
-	}
-	bool operator >(const Status &st)const
-	{
-		return dist > st.dist;
-	}
-};
 struct Edge
 {
-	int to; Dist dist;
-	Edge():to(0),dist(0) 
-	{}
-	Edge(int to_,Dist dist_):to(to_),dist(dist_)
-	{}
-	void set(int to_,Dist dist_)
-	{
-		to = to_;
-		dist = dist_;
-	}
-	bool operator >(const Edge &ed)const
-	{
-		return dist > ed.dist;
-	}
+    int to;
+    Dist dist;
+    Edge(int to_,Dist dist_):to(to_),dist(dist_)
+    {}
+    bool operator >(const Edge &ed)const
+    {
+        return dist > ed.dist;
+    }
 };
-//Shortest cost from i to j.
-int dijkstra(int i, int j)
-{
-	priority_queue<Status, vector<Status>, greater<Status> > que;
-	que.push(Status(i, 0));
-	for(int k=0;k<V;k++)
-		shortest[k]=INF;
-	shortest[i]=0;
 
-	Status sta, tmp;
-	int to;
-	Dist dist;
-	while(!que.empty())
-	{
-		sta = que.top();
-		que.pop();
-		if(shortest[sta.pos] < sta.dist) continue;
-		for(int k=0;k<vertex[sta.pos].size();k++)
-		{
-			to = vertex[sta.pos][k].to;
-			dist = vertex[sta.pos][k].dist;
-			if(shortest[to] > shortest[sta.pos] + dist)
-			{
-				shortest[to] = shortest[sta.pos] + dist;
-				prev[to] = sta.pos;
-				tmp.set(to, shortest[to]);
-				que.push(tmp);
-			}
-		}
-		
-	}
-	
-	return shortest[j];
-}
-void dijkstra(int i)
+//Shortest cost from i to j.
+vector<Dist> dijkstra(int i, const Graph &vertex, vector<int> &preVector)
 {
-	dijkstra(i, 0);
+    vector<Dist> shortest(vertex.size(), INF);
+    priority_queue<Edge, vector<Edge>, greater<Edge> > que;
+
+    que.push(Edge(i, 0));
+    shortest[i]=0;
+
+    Edge state(0,0), tmp(0,0), e(0,0);
+    while(!que.empty())
+    {
+        state = que.top();
+        que.pop();
+        if(shortest[state.to] < state.dist) continue;
+        for(Edge e : vertex[state.to])
+        {
+            if(shortest[e.to] > shortest[state.to] + e.dist)
+            {
+                shortest[e.to] = shortest[state.to] + e.dist;
+                preVector[e.to] = state.to;
+                tmp = Edge(e.to, shortest[e.to]);
+                que.push(tmp);
+            }
+        }
+    }
+    return shortest;
 }
-vector<int> get_path(int i,int j)
+vector<int> get_path(int i, int j, const vector<int> &preVector)
 {
-	vector<int> rev;
-	rev.push_back(j);
-	int p=j;
-	while(p!=i)
-	{
-		p = prev[p];
-		rev.push_back(p);
-	}
-	reverse(rev.begin(),rev.end());
-	return rev;
+    vector<int> rev;
+    rev.push_back(j);
+    int p=j;
+    while(p!=i)
+    {
+        p = preVector[p];
+        rev.push_back(p);
+    }
+    reverse(rev.begin(),rev.end());
+    return rev;
+}
+
+vector<Dist> dijkstra(int i, const Graph &vertex)
+{
+  vector<int> preVector(vertex.size());
+  return dijkstra(i, vertex, preVector);
+}
+Dist dijkstra(int i,int j, const Graph &vertex)
+{
+  return dijkstra(i, vertex)[j];
+}
+Dist dijkstra(int i,int j, const Graph &vertex, vector<int> &path)
+{
+  vector<int> preVector(vertex.size());
+  vector<Dist> shortest(dijkstra(i, vertex, preVector));
+  path = get_path(i, j, preVector);
+  return shortest[j];
 }

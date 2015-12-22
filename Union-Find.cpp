@@ -24,24 +24,34 @@ int Find(int p)
 {
 	return parent[p] < 0 ? p : parent[p] = Find(parent[p]);
 }
-void Marge(int p,int q)
+void Merge(int p,int q)
 {
 	p=Find(p);q=Find(q);
 	if(p==q) return;
 	if(parent[p] < parent[q])
+	{
+		parent[p]+=parent[q];
 		parent[q]=p;
+	}
 	else if(parent[q] < parent[p])
+	{
+		parent[q]+=parent[p];
 		parent[p]=q;
+	}
 	else
 	{
+		parent[p]+=parent[q];
 		parent[q]=p;
-		parent[p]--;
 	}
 
 }
 bool Belong(int p, int q)
 {
 	return Find(p) == Find(q);
+}
+int size(int p)
+{
+	return -parent[Find(p)];
 }
 
 
@@ -50,6 +60,6 @@ int main()
 {
 	int n;
 	scanf("%d", &n);
-	    
+
 	printf("%d\n", n);
 }
