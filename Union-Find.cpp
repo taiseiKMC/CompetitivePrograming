@@ -18,7 +18,6 @@ typedef pair<int, int> PII;
 //
 //  Union-Find Tree
 //
-
 vector<int> parent(N,-1);//N is size
 int Find(int p)
 {
@@ -30,36 +29,20 @@ void Merge(int p,int q)
 	if(p==q) return;
 	if(parent[p] < parent[q])
 	{
-		parent[p]+=parent[q];
+		parent[p] += parent[q];
 		parent[q]=p;
-	}
-	else if(parent[q] < parent[p])
-	{
-		parent[q]+=parent[p];
-		parent[p]=q;
 	}
 	else
 	{
-		parent[p]+=parent[q];
-		parent[q]=p;
+		parent[q] += parent[p];
+		parent[p]=q;
 	}
-
 }
 bool Belong(int p, int q)
 {
 	return Find(p) == Find(q);
 }
-int size(int p)
+int GetSize(int p)
 {
 	return -parent[Find(p)];
-}
-
-
-
-int main()
-{
-	int n;
-	scanf("%d", &n);
-
-	printf("%d\n", n);
 }
