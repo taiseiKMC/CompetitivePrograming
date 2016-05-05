@@ -5,6 +5,7 @@ using namespace std;
 typedef long long LL;
 typedef pair<int, int> PII;
 typedef long double LD;
+typedef pair<LD, LD> PLDLD;
 
 #define FOR(i,a,b) for(int i=(a);i<(b);++i)
 #define REP(i,n)  FOR(i,0,n)
