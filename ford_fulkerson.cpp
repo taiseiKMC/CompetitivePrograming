@@ -30,8 +30,8 @@ vector<Edge> graph[N];
 bool used[101];
 void add_Edge(int from, int to, int cap)
 {
-	graph[from].push_back((Edge){from,to,cap,graph[to].size()});
-	graph[to].push_back((Edge){to,from,0,graph[from].size()-1});
+	graph[from].push_back((Edge){from,to,cap,(int)graph[to].size()});
+	graph[to].push_back((Edge){to,from,0,(int)graph[from].size()-1});
 }
 int dfs(int from, int to, int f)
 {
