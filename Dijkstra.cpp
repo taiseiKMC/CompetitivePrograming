@@ -37,6 +37,7 @@ struct Edge
 //Shortest cost from i to j.
 vector<Dist> dijkstra(int i, const Graph &vertex, vector<int> &preVector)
 {
+    vector<int> pVector(vertex.size(), INF);
     vector<Dist> shortest(vertex.size(), INF);
     priority_queue<Edge, vector<Edge>, greater<Edge> > que;
 
@@ -54,14 +55,16 @@ vector<Dist> dijkstra(int i, const Graph &vertex, vector<int> &preVector)
             if(shortest[e.to] > shortest[state.to] + e.dist)
             {
                 shortest[e.to] = shortest[state.to] + e.dist;
-                preVector[e.to] = state.to;
+                pVector[e.to] = state.to;
                 tmp = Edge(e.to, shortest[e.to]);
                 que.push(tmp);
             }
         }
     }
+    preVector = pVector;
     return shortest;
 }
+
 vector<int> get_path(int i, int j, const vector<int> &preVector)
 {
     vector<int> rev;
@@ -71,6 +74,8 @@ vector<int> get_path(int i, int j, const vector<int> &preVector)
     {
         p = preVector[p];
         rev.push_back(p);
+        if(p==INF)
+            return vector<int>();
     }
     reverse(rev.begin(),rev.end());
     return rev;
