@@ -31,13 +31,20 @@ struct SegmentTree
     {
         return (k-1)/2;
     }
+    const int least_square(const int k) const
+    {
+        int tmp=k;
+        for(int i=1; 64>i; i<<=1)
+            tmp |= (tmp >> i);
+        return tmp+1;
+    }
     
     const T init(const int k);
     const void update(const int k, const T x);
-    const T sum(const int a, const int b, const int k, const int l, const int r) const;
+    const T fold(const int a, const int b, const int k, const int l, const int r) const;
     const T fold(const int a,const int b) const
     {
-        return sum(a, b, 0, 0, leaf_number);
+        return fold(a, b, 0, 0, leaf_number);
     }
     
     /*const void print() const
@@ -51,9 +58,7 @@ template<typename T>
 SegmentTree<T>::SegmentTree(const vector<T> &ary, const function<T(T,T)> f, const T e_):SIZE(ary.size()),op(f),e(e_)
 {
     tree_size=SIZE;
-    for(int i=1; 64>i; i<<=1)
-        tree_size |= (tree_size >> i);
-    leaf_number=tree_size+1;
+    leaf_number=least_square(tree_size);
     tree_size=leaf_number*2;
     
     node=vector<T>(tree_size-1);
@@ -88,7 +93,7 @@ const void SegmentTree<T>::update(const int k, const T x)
 }
     
 template<typename T>
-const T SegmentTree<T>::sum(const int a, const int b, const int k, const int l, const int r) const
+const T SegmentTree<T>::fold(const int a, const int b, const int k, const int l, const int r) const
 {
     if(r <= a || b <= l)
         return e;  //[a,b)と[l,r)が交わらない
