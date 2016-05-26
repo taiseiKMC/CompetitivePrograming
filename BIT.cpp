@@ -15,29 +15,17 @@ LL INF = 1e9;
 
 
 using namespace std;
-
 template<typename T>
 struct BIT
 {
     const int SIZE;
     const function<T(T,T)> op;
+    const function<T(T)> inv;
     const T e;
     vector<T> node;
     
-    BIT(const vector<T> &ary, const function<T(T,T)> f, const T e_);
+    BIT(const vector<T> &ary, const function<T(T,T)> f, const T e_, const function<T(T)> inv_);
     
-    const int child_l(const int k) const
-    {
-        return k*2+1;
-    }
-    const int child_r(const int k) const
-    {
-        return k*2+2;
-    }
-    const int parent(const int k) const
-    {
-        return (k-1)/2;
-    }
     const int least_square(const int k) const
     {
         int tmp=k;
@@ -46,74 +34,45 @@ struct BIT
         return tmp+1;
     }
     
-    const T init(const int k);
-    const void update(const int k, const T x);
-    const T fold(const int a, const int b, const int k, const int l, const int r) const;
+    const void add(const int k, const T x);
+    const T fold(const int k) const;
     const T fold(const int a,const int b) const
     {
-        return fold(a, b, 0, 0, leaf_number);
+        return op(fold(b), inv(a==0?e:fold(a-1)));
     }
     
     /*const void print() const
     {
-        REP(i, tree_size)
+        REP(i, SIZE)
         cout<<node[i]<<" \n"[i==tree_size-1];
     }*/
 };
 
 template<typename T>
-BIT<T>::BIT(const vector<T> &ary, const function<T(T,T)> f, const T e_):SIZE(least_square(ary.size())),op(f),e(e_)
+BIT<T>::BIT(const vector<T> &ary, const function<T(T,T)> f, const T e_, const function<T(T)> inv_):SIZE(least_square(ary.size()+1)),op(f),e(e_),inv(inv_)
 {
+    node=vector<T>(SIZE, e);
     
-    node=vector<T>(SIZE);
-    
-    for(int i=0;i<SIZE;i++)
-        if(i<SIZE)
-            node[i+leaf_number-1]=ary[i];
-        else
-            node[i+leaf_number-1]=e;
-                
-    init(0);
-}
-    
-    
-template<typename T>
-const T BIT<T>::init(const int k)
-{
-    if(k>=leaf_number-1) return node[k];
-    return node[k]=op(init(child_l(k)),init(child_r(k)));
-}
-    
-template<typename T>
-const void BIT<T>::update(const int k, const T x)
-{
-    int tmp = k+leaf_number-1;
-    node[tmp]=x;
-    while(tmp > 0)
-    {
-        tmp=parent(tmp);
-        node[tmp]=op(node[child_l(tmp)], node[child_r(tmp)]);
-    }
-}
-    
-template<typename T>
-const T BIT<T>::fold(const int a, const int b, const int k, const int l, const int r) const
-{
-    if(r <= a || b <= l)
-        return e;  //[a,b)と[l,r)が交わらない
-    if(a <= l && r <= b) 
-        return node[k];    //[a,b)が[l,r)を含む
-    
-    return op(sum(a,b,child_l(k),l,(l+r)/2), sum(a,b,child_r(k),(l+r)/2, r));
+    for(int i=1;i<=ary.size();i++)
+        add(i, ary[i-1]);
 }
 
 
-#define PLUS [](int p,int q){return p+q;},0
-#define MULT [](int p,int q){return p*q;},1
-#define MAX [](int p,int q){return max(p,q);},INT_MIN
-#define MIN [](int p,int q){return min(p,q);},INT_MAX
-
-int main()
+template<typename T>
+const void BIT<T>::add(const int k, const T x) //k...0 origin
 {
-    
+    for(int j=k+1;j<=SIZE;j+=(j&-j))
+        node[j]=op(node[j], x);
 }
+    
+template<typename T>
+const T BIT<T>::fold(const int k) const
+{
+    T tmp=e;
+    for(int j=k+1;j>0;j=j&(j-1))
+        tmp=op(tmp, node[j]);
+    return tmp;
+}
+
+
+#define PLUS [](int p,int q){return p+q;},0,[](int x){return -x;}
