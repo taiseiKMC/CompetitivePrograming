@@ -350,5 +350,5 @@ template<> const Matrix<ld> Matrix<ld>::inverse() const
     throw;
   }
   tmp=1/e*tmp;
-  return tmp.transport();
+  return tmp;
 }
