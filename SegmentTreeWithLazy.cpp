@@ -51,7 +51,8 @@ struct LazySegmentTree
     }
     const int least_square(const int k) const
     {
-        int tmp=k;
+        if(k==0) return 0;
+        int tmp=k-1;
         for(int i=1; 64>i; i<<=1)
             tmp |= (tmp >> i);
         return tmp+1;

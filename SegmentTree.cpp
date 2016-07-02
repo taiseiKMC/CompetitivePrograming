@@ -33,7 +33,8 @@ struct SegmentTree
     }
     const int least_square(const int k) const
     {
-        int tmp=k;
+        if(k==0) return 0;
+        int tmp=k-1;
         for(int i=1; 64>i; i<<=1)
             tmp |= (tmp >> i);
         return tmp+1;
@@ -60,8 +61,8 @@ SegmentTree<T>::SegmentTree(const vector<T> &ary, const function<T(T,T)> f, cons
     tree_size=SIZE;
     leaf_number=least_square(tree_size);
     tree_size=leaf_number*2;
-    
-    node=vector<T>(tree_size-1);
+    node=vector<T>(tree_size);
+    tree_size--;
     
     for(int i=0;i<leaf_number;i++)
         if(i<SIZE)
@@ -100,7 +101,7 @@ const T SegmentTree<T>::fold(const int a, const int b, const int k, const int l,
     if(a <= l && r <= b) 
         return node[k];    //[a,b)が[l,r)を含む
     
-    return op(sum(a,b,child_l(k),l,(l+r)/2), sum(a,b,child_r(k),(l+r)/2, r));
+    return op(fold(a,b,child_l(k),l,(l+r)/2), fold(a,b,child_r(k),(l+r)/2, r));
 }
 
 #define PLUS [](int p,int q){return p+q;},0
