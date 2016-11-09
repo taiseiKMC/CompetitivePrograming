@@ -33,7 +33,7 @@ s(_s), sa(_s.size()+1), length(_s.size())
         return ri<rj;
     };
     
-    for(k=1;k<=size();k++)
+    for(k=1;k<=size();k*=2)
     {
         sort(sa.begin(), sa.end(), sa_comparator);
         
