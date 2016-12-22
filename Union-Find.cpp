@@ -1,48 +1,42 @@
-#include <cstdio>
-#include <algorithm>
-#include <iostream>
-#include <stack>
-#include <queue>
-#include <vector>
-#include <limits.h>
-#include <math.h>
-using namespace std;
 
-typedef long long LL;
-typedef pair<int, int> PII;
+class UnionFind
+{
+    private:
+        vector<int> parent;
 
-#define FOR(i,a,b) for(int i=(a);i<(b);++i)
-#define REP(i,n)  FOR(i,0,n)
-#define CLR(a) memset((a), 0 ,sizeof(a))
+    public:
+        UnionFind(const int n):parent(vector<int>(n,-1))
+        {}
+        
+        const int Find(const int p)
+        {
+            return parent[p] < 0 ? p : parent[p] = Find(parent[p]);
+        }
+        const void Merge(int p, int q);
 
-//
-//  Union-Find Tree
-//
-vector<int> parent(N,-1);//N is size
-int Find(int p)
+        const bool Belong(const int p, const int q)
+        {
+            return Find(p) == Find(q);
+        }
+        const int GetSize(const int p)
+        {
+            return -parent[Find(p)];
+        }
+};
+
+const void UnionFind::Merge(int p, int q)
 {
-	return parent[p] < 0 ? p : parent[p] = Find(parent[p]);
-}
-void Merge(int p,int q)
-{
-	p=Find(p);q=Find(q);
-	if(p==q) return;
-	if(parent[p] < parent[q])
-	{
-		parent[p] += parent[q];
-		parent[q]=p;
-	}
-	else
-	{
-		parent[q] += parent[p];
-		parent[p]=q;
-	}
-}
-bool Belong(int p, int q)
-{
-	return Find(p) == Find(q);
-}
-int GetSize(int p)
-{
-	return -parent[Find(p)];
+    p=Find(p);
+    q=Find(q);
+    if(p==q) return;
+    if(parent[p] < parent[q])
+    {
+        parent[p] += parent[q];
+        parent[q]=p;
+    }
+    else
+    {
+        parent[q] += parent[p];
+        parent[p]=q;
+    }
 }
