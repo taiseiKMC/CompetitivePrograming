@@ -45,7 +45,7 @@ const bool is_zero(const T e) {
 template<class T>
 struct Matrix {
   VV<T> matrix;
-  int n, m;
+  int m, n;
 
   Matrix(const VV<T> &matrix_);
   explicit Matrix(int n_);
@@ -67,7 +67,7 @@ struct Matrix {
   Row<T> &operator[](const int x);
   template<class U> operator Matrix<U> () const;
 
-  const Matrix<T> pow(int x) const;
+  const Matrix<T> pow(long long x) const;
   const int rank() const;
 
   //逆行列が存在すれば、(行列式)*(逆行列)を返す
@@ -210,9 +210,9 @@ Matrix<T>::operator Matrix<U> () const {
 }
 
 template<class T>
-const Matrix<T> Matrix<T>::pow(int x) const {
+const Matrix<T> Matrix<T>::pow(long long x) const {
   Matrix<T> tmp(*this), e(m);
-  for (int i = 1; i <= x; i <<= 1) {
+  for (long long i = 1; i <= x; i <<= 1) {
     if ((x & i) > 0)
       e = e * tmp;
     tmp = tmp * tmp;
