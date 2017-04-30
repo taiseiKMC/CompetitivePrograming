@@ -67,6 +67,10 @@ class Mod
         Mod &operator /=(const Mod &rhs)
         {
             return *this = *this / rhs;
+        }  
+        bool operator ==(const Mod &rhs)
+        {
+            return value == rhs.value;
         }
 };
 
