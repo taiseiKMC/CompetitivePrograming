@@ -17,20 +17,20 @@ typedef pair<int, int> PII;
 
 
 //
-// Clustal algorithm
+// Kruskal algorithm
 //
 
 struct Edge{
 int start,end,dis;
-bool operator >(const Bdge &b)const{return dis > b.dis;}
+bool operator >(const Edge &b)const{return dis > b.dis;}
 };
-int V;//The num of vertex.
+const int V=100000;//The num of vertex.
 int inf = INT_MAX/2;
 priority_queue<Edge,vector<Edge> ,greater<Edge> > que;//Edges are stacked
 vector<Edge> minTree;//the result will be push in 
 int belong[V];
 
-void Clustal()
+void Kruskal()
 {
 	REP(i,V)
 		belong[i]=i;
