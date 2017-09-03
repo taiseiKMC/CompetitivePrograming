@@ -1,15 +1,4 @@
-#include <cstdio>
-#include <algorithm>
-#include <iostream>
-#include <stack>
-#include <queue>
-#include <vector>
-#include <limits.h>
-#include <math.h>
-#include <string.h>
-#include <stdlib.h>
-#include <cassert>
-#include <map>
+#include <bits/stdc++.h>
 using namespace std;
 
 typedef long long LL;

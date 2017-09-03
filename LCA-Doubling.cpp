@@ -72,3 +72,4 @@ int lca(int p, int q)
 
 	return parent[t][0];
 }
+//辺は双方向に張る
