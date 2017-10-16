@@ -1,19 +1,45 @@
-#include <cstdio>
-#include <algorithm>
-#include <iostream>
-#include <stack>
-#include <queue>
-#include <vector>
-#include <limits.h>
-#include <math.h>
-using namespace std;
 
-typedef long long LL;
-typedef pair<int, int> PII;
+class UnionFind
+{
+    private:
+        vector<int> parent;
 
-#define FOR(i,a,b) for(int i=(a);i<(b);++i)
-#define REP(i,n)  FOR(i,0,n)
-#define CLR(a) memset((a), 0 ,sizeof(a))
+    public:
+        UnionFind(const int n):parent(vector<int>(n,-1))
+        {}
+        
+        const int Find(const int p)
+        {
+            return parent[p] < 0 ? p : parent[p] = Find(parent[p]);
+        }
+        const void Merge(int p, int q);
+
+        const bool Belong(const int p, const int q)
+        {
+            return Find(p) == Find(q);
+        }
+        const int GetSize(const int p)
+        {
+            return -parent[Find(p)];
+        }
+};
+
+const void UnionFind::Merge(int p, int q)
+{
+    p=Find(p);
+    q=Find(q);
+    if(p==q) return;
+    if(parent[p] < parent[q])
+    {
+        parent[p] += parent[q];
+        parent[q]=p;
+    }
+    else
+    {
+        parent[q] += parent[p];
+        parent[p]=q;
+    }
+}
 
 
 //
@@ -24,29 +50,33 @@ struct Edge{
 int start,end,dis;
 bool operator >(const Edge &b)const{return dis > b.dis;}
 };
-const int V=100000;//The num of vertex.
-int inf = INT_MAX/2;
-priority_queue<Edge,vector<Edge> ,greater<Edge> > que;//Edges are stacked
-vector<Edge> minTree;//the result will be push in 
-int belong[V];
+using EdgeQueue=priority_queue<Edge,vector<Edge> ,greater<Edge> >;
 
-void Kruskal()
+const EdgeQueue convertGraph(const vector<vector<Edge> > &g)
 {
-	REP(i,V)
-		belong[i]=i;
+	EdgeQueue que;
+	for(auto&& es:g)
+		for(auto&& e:es)
+			que.push(e);
+	return que;
+}
+
+const vector<Edge> Kruskal(const int n, EdgeQueue que)
+{
+	UnionFind belong(n);
 	
 	Edge edge;
+	vector<Edge> min_cost_tree;
 	while(!que.empty())
 	{
 		edge=que.top();
-		if(belong[edge.start]!=belong[edge.end])
+		if(belong.Find(edge.start)!=belong.Find(edge.end))
 		{
-			REP(i,V)
-				if(belong[i]==belong[edge.end])
-					belong[i]=belong[edge.start];
+			belong.Merge(edge.start, edge.end);
 					
-			minTree.push_back(edge);
+			min_cost_tree.push_back(edge);
 		}
 		que.pop();
 	}
+	return min_cost_tree;
 }
