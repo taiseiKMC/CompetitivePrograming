@@ -1,5 +1,10 @@
-//n種類の遅延変数に対応したい
-//いや無理だしいらんでしょ
+/*
+LazySegmentTree<T> segtree(vector<T> ary, MAX);
+//遅延を追加 (T->T->T(lazy同士の加算), T(node)->T(lazy)->int(区間の長さ)->T(遅延評価), lazyの初期値)
+segtree.add_lazy(RANGEADD);
+*/
+
+//n種類の遅延変数に対応したい?
 using namespace std;
 template<typename T>
 struct Lazy
@@ -77,11 +82,11 @@ struct LazySegmentTree
     
     const void evalute_lazy(const int k, const int size);
     
-    /*const void print() const
+    const void print() const
     {
         REP(i, tree_size)
         cout<<node[i]<<" \n"[i==tree_size-1];
-    }*/
+    }
 };
 
 template<typename T>
@@ -114,15 +119,19 @@ const T LazySegmentTree<T>::init(const int k)
 template<typename T>
 const void LazySegmentTree<T>::update(const int a, const int b, const T x, const int index, const int k, const int l, const int r)
 {
+    evalute_lazy(k, r-l);
     if(r <= a || b <= l)
         return;  //[a,b)と[l,r)が交わらない
-    if(a <= l && r <= b) 
+    if(a <= l && r <= b)
+    {
         lazies[index].add_lazy(x,k);    //[a,b)が[l,r)を含む
+        evalute_lazy(k, r-l);
+    }
     else
     {
-        node[k]=lazies[index].evalute(node[k], x, min(b,r)-max(a,l));
         update(a,b,x,index,child_l(k),l,(l+r)/2);
         update(a,b,x,index,child_r(k),(l+r)/2, r);
+        node[k]=op(node[child_l(k)], node[child_r(k)]);
     }
 }
     
