@@ -17,8 +17,8 @@ typedef vector<char> VB;
 #define ALL(a) a.begin(),a.end()
  
 const LD eps=1e-5;
-const long long INFL=(LL)(1e9)*(LL)(1e9);
-const int INF=1e9;
+//const long long INF=(LL)(1e9)*(LL)(1e9);
+const int INF=1e9*2;
  
 template<class T>
 void chmin(T& a, const T& b)
@@ -41,16 +41,30 @@ const LL pow(const LL p, const LL q)
 	return t;
 }
 
-//print for container
-template<typename Iterator>
-void print(const Iterator& first, const Iterator& last)
+template <typename T>
+struct has_iter
 {
-	auto&& back=prev(last);
-	for(auto e=first; e!=last; e=next(e))
-		cout<<*e<<" \n"[e==back];
+	private:
+		template <typename U>
+		static constexpr true_type check(typename U::iterator*);
+		template <typename U>
+		static constexpr false_type check(...);
+
+	public:
+		static constexpr bool value = decltype(check<T>(nullptr))::value;
+};
+
+template<typename T, typename U = typename T::iterator>
+void print(const T& container)
+{
+		auto&& first=begin(container), last=end(container);
+		auto&& back=prev(last);
+		for(auto e=first; e!=last; e=next(e))
+			cout<<*e<<" \n"[e==back];
 }
 
-template<typename Head>
+extern void* enabler;
+template<typename Head, typename enable_if<!has_iter<Head>::value>::type*& = enabler>
 void print(const Head& head)
 {
 	cout<<head<<endl;
@@ -67,6 +81,21 @@ void io_speedup()
 {
 	cin.tie(0);
 	ios::sync_with_stdio(false);
+}
+
+template<typename T>
+istream& operator >> (istream& is, vector<T>& vec)
+{
+	for(T& x: vec) is >> x;
+	return is;
+}
+
+template<typename T>
+vector<T> read(int n)
+{
+	vector<T> t(n);
+	cin>>t;
+	return t;
 }
 
 template<typename T>
