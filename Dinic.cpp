@@ -1,3 +1,4 @@
+//set INF
 using FLOW = long long;
 struct Edge
 {
@@ -56,7 +57,7 @@ FLOW FlowNetwork::dfs(int from, int to, FLOW f)
 		Edge &e=graph[from][i];
         if(e.cap > 0 && level[from] < level[e.to])
         {
-            LL d = dfs(e.to, to, min(e.cap, f));
+            FLOW d = dfs(e.to, to, min(e.cap, f));
             if(d>0)
             {
                 e.cap -= d;

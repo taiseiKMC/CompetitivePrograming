@@ -4,13 +4,13 @@ class SA
         int k;
         
     public:
-        const size_t length;
         const string s;
         vector<int> sa;
+        const size_t length;
         
         SA(const string &_s);
         
-        const size_t size() const { return length; }
+        const int size() const { return (int)length; }
         const bool contain(const string &t) const;
         const vector<int> lcp() const;
 };
