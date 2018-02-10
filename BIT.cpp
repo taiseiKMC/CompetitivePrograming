@@ -1,59 +1,46 @@
-#include <bits/stdc++.h>
-
-using namespace std;
-
-typedef long long LL;
-typedef pair<int, int> PII;
-typedef long double LD;
-typedef pair<LD, LD> PLDLD;
-
-#define FOR(i,a,b) for(int i=(a);i<(b);++i)
-#define REP(i,n)  FOR(i,0,n)
-#define CLR(a) memset((a), 0 ,sizeof(a))
-LL MOD = 1e9+7;
-LL INF = 1e9;
-
-
-using namespace std;
 template<typename T>
-struct BIT
+class BIT
 {
-    const int SIZE;
-    const function<T(T,T)> op;
-    const function<T(T)> inv;
-    const T e;
-    vector<T> node;
+	private:
+		const int tree_size;
+		const function<T(T,T)> op;
+		const T e;
+		const function<T(T)> inv;
+
+		vector<T> node;
+		const int least_square(const int k) const
+		{
+			int tmp=k;
+			for(int i=1; 64>i; i<<=1)
+				tmp |= (tmp >> i);
+			return tmp+1;
+		}
+
+    public:
+		const int SIZE;
+		BIT(const vector<T> &ary, const function<T(T,T)> f, const T e_, const function<T(T)> inv_);
     
-    BIT(const vector<T> &ary, const function<T(T,T)> f, const T e_, const function<T(T)> inv_);
-    
-    const int least_square(const int k) const
-    {
-        int tmp=k;
-        for(int i=1; 64>i; i<<=1)
-            tmp |= (tmp >> i);
-        return tmp+1;
-    }
-    
-    const void add(const int k, const T x);
-    const T fold(const int k) const;
-    const T fold(const int a,const int b) const
-    {
-        return op(fold(b), inv(a==0?e:fold(a-1)));
-    }
-    
-    /*const void print() const
-    {
-        REP(i, SIZE)
-        cout<<node[i]<<" \n"[i==tree_size-1];
-    }*/
+		const void add(const int k, const T x);
+		const T fold(const int k) const;
+		const T fold(const int a,const int b) const
+		{
+			return op(fold(b), inv(a==0?e:fold(a-1)));
+		}
+		
+		const void print() const
+		{
+			REP(i, tree_size)
+			    cout<<node[i]<<" \n"[i==tree_size-1];
+		}
 };
 
 template<typename T>
-BIT<T>::BIT(const vector<T> &ary, const function<T(T,T)> f, const T e_, const function<T(T)> inv_):SIZE(least_square(ary.size()+1)),op(f),e(e_),inv(inv_)
+BIT<T>::BIT(const vector<T> &ary, const function<T(T,T)> f, const T e_, const function<T(T)> inv_)
+	:tree_size(least_square(ary.size()+1)),op(f),e(e_),inv(inv_),SIZE(ary.size())
 {
-    node=vector<T>(SIZE, e);
+    node=vector<T>(tree_size, e);
     
-    for(int i=1;i<=ary.size();i++)
+    for(int i=1;i<=SIZE;i++)
         add(i, ary[i-1]);
 }
 
@@ -61,7 +48,7 @@ BIT<T>::BIT(const vector<T> &ary, const function<T(T,T)> f, const T e_, const fu
 template<typename T>
 const void BIT<T>::add(const int k, const T x) //k...0 origin
 {
-    for(int j=k+1;j<=SIZE;j+=(j&-j))
+    for(int j=k+1;j<=tree_size;j+=(j&-j))
         node[j]=op(node[j], x);
 }
     
@@ -76,3 +63,37 @@ const T BIT<T>::fold(const int k) const
 
 
 #define PLUS [](int p,int q){return p+q;},0,[](int x){return -x;}
+
+template<typename T>
+class RARS
+{
+	public:
+		BIT<T> bit0, bit1;
+		RARS(const vector<T> &ary, const function<T(T,T)> f, const T e_, const function<T(T)> inv_)
+		:bit0(ary, f, e_, inv_), bit1(vector<T>(ary.size()), f, e_, inv_)
+		{}
+
+		const void add(const int l, const int r, const int x)
+		{
+			bit0.add(l, -x*l);
+			bit1.add(l,x);
+			bit0.add(r,x*r);
+			bit1.add(r,-x);
+		}
+
+		const T sum(const int k) const
+		{
+			return bit0.fold(k)+bit1.fold(k)*k;
+		}
+
+		const T get(const int k) const
+		{
+			return sum(k+1)-sum(k);
+		}
+		
+		const void print() const
+		{
+			REP(i, bit0.SIZE)
+				cout<<get(i)<<" \n"[i==bit0.SIZE-1];
+		}
+};
