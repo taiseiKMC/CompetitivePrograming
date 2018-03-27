@@ -5,14 +5,13 @@ segtree.add_lazy(RANGEADD);
 */
 
 //n種類の遅延変数に対応したい?
-using namespace std;
 template<typename T>
 struct Lazy
 {
     vector<T> lazy;
-    T e;
     const function<T(T,T)> op;
     const function<T(T,T,int)> range_op;
+    T e;
     Lazy(const int size, const function<T(T,T)> f, const function<T(T,T,int)> g, const T e_)
     :lazy(vector<T>(size, e_)),op(f),range_op(g),e(e_)
     {}
@@ -169,4 +168,5 @@ const void LazySegmentTree<T>::evalute_lazy(const int k, const int size)
 #define MULT [](int p,int q){return p*q;},1
 #define MAX [](int p,int q){return max(p,q);},INT_MIN
 #define MIN [](int p,int q){return min(p,q);},INT_MAX
-#define RANGEADD [](int p,int q){return p+q;},[](int p,int q,int r){return p+q*r;},0
+#define RARS [](int p,int q){return p+q;},[](int p,int q,int r){return p+q*r;},0
+#define RARM [](int p,int q){return p+q;},[](int p,int q,int r){return p+q;},0
