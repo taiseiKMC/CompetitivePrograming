@@ -1,3 +1,8 @@
+///
+///lower_bound(t)...tを含む最小のSAの添字
+///upper_bound(t)...tを含む最大のSAの添字+1
+///
+
 class SA
 {
     private:
@@ -12,6 +17,8 @@ class SA
         
         const int size() const { return (int)length; }
         const bool contain(const string &t) const;
+        const int lower_bound(const string &t) const;
+        const int upper_bound(const string &t) const;
         const vector<int> lcp() const;
 };
 
@@ -57,6 +64,31 @@ const bool SA::contain(const string &t) const
         else r=mid;
     }
     return s.compare(sa[r], t.size(), t)==0;
+}
+
+
+const int SA::lower_bound(const string &t) const
+{
+    int l=0,r=size();
+    while(r-l>1)
+    {
+        int mid=(l+r)/2;
+        if(s.compare(sa[mid], t.size(), t)<0) l=mid;
+        else r=mid;
+    }
+    return r;
+}
+
+const int SA::upper_bound(const string &t) const
+{
+    int l=0,r=size();
+    while(r-l>1)
+    {
+        int mid=(l+r)/2;
+        if(s.compare(sa[mid], t.size(), t)<=0) l=mid;
+        else r=mid;
+    }
+    return r;
 }
 
 const vector<int> SA::lcp() const
