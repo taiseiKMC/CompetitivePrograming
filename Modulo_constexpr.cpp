@@ -1,7 +1,10 @@
+//c++14
 
 class Mod
 {
-	using value_type = long long;
+	public:
+		using value_type = long long;
+
 	private:
 		static const value_type MODULO = 1e9+7;
 		value_type value;
@@ -15,7 +18,7 @@ class Mod
 		constexpr Mod():value(0){}
 		constexpr Mod(const value_type &val):value(Normalize(val)) {}
 		
-		explicit operator value_type () const
+		constexpr explicit operator value_type () const
 		{
 			return value;
 		}
@@ -36,32 +39,35 @@ class Mod
 		{
 			return Mod(value * rhs.value);
 		}
-		Mod &operator +=(const Mod &rhs)
+		constexpr Mod &operator +=(const Mod &rhs)
 		{
-			return *this = *this + rhs;
+			value = Normalize(value + rhs.value);
+			return *this;
 		}
-		Mod &operator -=(const Mod &rhs)
+		constexpr Mod &operator -=(const Mod &rhs)
 		{
-			return *this = *this - rhs;
+			value = Normalize(value - rhs.value);
+			return *this;
 		}
-		Mod &operator *=(const Mod &rhs)
+		constexpr Mod &operator *=(const Mod &rhs)
 		{
-			return *this = *this * rhs;
+			value = Normalize(value * rhs.value);
+			return *this;
 		}
 
 
-		Mod pow(value_type p) const;
+		constexpr Mod pow(value_type p) const;
 
-		Mod inv() const
+		constexpr Mod inv() const
 		{
 			return pow(MODULO-2);
 		}
 
-		const Mod operator /(const Mod &rhs) const
+		constexpr const Mod operator /(const Mod &rhs) const
 		{
 			return *this * rhs.inv();
 		}
-		Mod &operator /=(const Mod &rhs)
+		constexpr Mod &operator /=(const Mod &rhs)
 		{
 			return *this = *this / rhs;
 		}  
@@ -71,7 +77,7 @@ class Mod
 		}
 };
 
-Mod Mod::pow(value_type p) const
+constexpr Mod Mod::pow(value_type p) const
 {
 	Mod tmp=1, mult=*this;
 	while(p)
@@ -92,55 +98,62 @@ namespace std
 	}
 };
 
-class Factorial
+
+
+template<size_t N>
+struct Factorial
 {
 	private:
-		vector<Mod> ary;
+		Mod ary[N];
 	public:
-		explicit Factorial(const size_t size):ary(vector<Mod>(size))
+		constexpr explicit Factorial():ary()
 		{
 			ary[0]=1;
-			for(size_t i=1;i<size;i++)
+			for(size_t i=1;i<N;i++)
 				ary[i]=ary[i-1]*i;
 		}
 
-		size_t size() const {   return ary.size();  }
+		constexpr size_t size() const {   return N;  }
 
-		Mod operator[] (const int id) const
+		constexpr Mod operator[] (const int id) const
 		{
 			return ary[id];
 		}
 };
+
+template<size_t N>
 class FactorialInv
 {
 	private:
-		vector<Mod> ary;
+		Mod ary[N];
 	public:
-		explicit FactorialInv(const Factorial &fact):ary(vector<Mod>(fact.size()))
+		constexpr explicit FactorialInv(const Factorial<N> &fact):ary()
 		{
-			for(size_t i=0;i<ary.size();i++)
+			for(size_t i=0;i<N;i++)
 				ary[i]=fact[i].inv();
 		}
 
 		//FactorialInv& operator=(FactorialInv&&)=default;
 
-		Mod operator[] (const int id) const
+		constexpr Mod operator[] (const int id) const
 		{
 			return ary[id];
 		}
 };
 
+template<size_t N, size_t M = N>
 class Combination
 {
 	private:
-		const Factorial *fact;
-		const FactorialInv *fact_inv;
+		const Factorial<N> fact;
+		const FactorialInv<M> fact_inv;
 	public:
-		Combination(const Factorial &fact_, const FactorialInv &fact_inv_):fact(&fact_),fact_inv(&fact_inv_)
+		constexpr Combination(const Factorial<N> fact_, const FactorialInv<M> fact_inv_)
+		:fact(fact_),fact_inv(fact_inv_)
 		{}
 
-		Mod operator()(const int n, const int m) const
+		constexpr Mod operator()(const int n, const int m) const
 		{
-			return (*fact)[n] * (*fact_inv)[m] * (*fact_inv)[n-m];
+			return (fact)[n] * (fact_inv)[m] * (fact_inv)[n-m];
 		}
 };
