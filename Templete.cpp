@@ -9,6 +9,7 @@ typedef pair<int, int> PII;
 typedef pair<LL, LL> PLL;
 typedef pair<LD, LD> PLDLD;
 typedef vector<int> VI;
+typedef vector<LL> VLL;
 typedef vector<char> VB;
  
 #define FOR(i,a,b) for(int i=(a);i<(int)(b);++i)
@@ -16,18 +17,18 @@ typedef vector<char> VB;
 #define CLR(a) memset((a), 0 ,sizeof(a))
 #define ALL(a) a.begin(),a.end()
  
-const LD eps=1e-5;
-//const long long INF=(LL)(1e9)*(LL)(1e9);
-const int INF=1e9*2;
+const LD eps=1e-10;
+const long long INFLL=(LL)(1e9)*(LL)(1e9);
+const int INF=1e9;
  
 template<class T>
-void chmin(T& a, const T& b)
+void chmin(T& a, const T b)
 {
 	if(a>b)
 		a=b;
 }
 template<class T>
-void chmax(T& a, const T& b)
+void chmax(T& a, const T b)
 {
 	if(a<b)
 		a=b;
@@ -36,7 +37,7 @@ void chmax(T& a, const T& b)
 const LL pow(const LL p, const LL q)
 {
 	LL t=1;
-	REP(i,q)
+	for(int i=0;i<q;i++)
 		t*=p;
 	return t;
 }
@@ -54,6 +55,7 @@ struct has_iter
 		static constexpr bool value = decltype(check<T>(nullptr))::value;
 };
 
+
 template<typename T, typename U = typename T::iterator>
 void print(const T& container)
 {
@@ -63,11 +65,17 @@ void print(const T& container)
 			cout<<*e<<" \n"[e==back];
 }
 
+
 extern void* enabler;
 template<typename Head, typename enable_if<!has_iter<Head>::value>::type*& = enabler>
 void print(const Head& head)
 {
 	cout<<head<<endl;
+}
+
+template<> void print<string>(const string& container)
+{
+	cout<<container<<endl;
 }
 
 template<typename Head, typename... Tail>
@@ -106,7 +114,7 @@ T read()
 	return t;
 }
 
-
 int main()
 {
+	
 }

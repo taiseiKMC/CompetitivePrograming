@@ -1,7 +1,8 @@
 
 class Mod
 {
-	using value_type = long long;
+	public:
+		using value_type = long long;
 	private:
 		static const value_type MODULO = 1e9+7;
 		value_type value;
