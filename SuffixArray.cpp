@@ -1,8 +1,8 @@
 ///
 ///lower_bound(t)...tを含む最小のSAの添字
 ///upper_bound(t)...tを含む最大のSAの添字+1
+///lcp() ... 高さ配列
 ///
-
 class SA
 {
     private:
@@ -56,7 +56,7 @@ s(_s), sa(_s.size()+1), length(_s.size())
         
 const bool SA::contain(const string &t) const
 {
-    int l=0,r=size();
+    int l=0,r=size()+1;
     while(r-l>1)
     {
         int mid=(l+r)/2;
@@ -69,7 +69,7 @@ const bool SA::contain(const string &t) const
 
 const int SA::lower_bound(const string &t) const
 {
-    int l=0,r=size();
+    int l=0,r=size()+1;
     while(r-l>1)
     {
         int mid=(l+r)/2;
@@ -81,7 +81,7 @@ const int SA::lower_bound(const string &t) const
 
 const int SA::upper_bound(const string &t) const
 {
-    int l=0,r=size();
+    int l=0,r=size()+1;
     while(r-l>1)
     {
         int mid=(l+r)/2;
