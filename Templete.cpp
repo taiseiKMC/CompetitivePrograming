@@ -123,6 +123,41 @@ istream& operator >> (istream& is, vector<T>& vec)
 	return is;
 }
 
+
+template<typename T, typename U>
+istream& operator >> (istream& is, pair<T, U>& t)
+{
+	is>>t.first>>t.second;
+	return is;
+}
+
+template<int N, typename... Ts, typename enable_if<N == sizeof...(Ts)-1>::type*& = enabler>
+void tuple_in(istream &is, tuple<Ts...> &t)
+{
+	is>>get<N>(t);
+}
+template<int N, typename... Ts, typename enable_if<N < sizeof...(Ts)-1>::type*& = enabler>
+void tuple_in(istream &is, tuple<Ts...> &t)
+{
+	is>>get<N>(t);
+	tuple_in<N+1, Ts...>(is, t);
+}
+
+template<typename... Ts>
+istream& operator >> (istream& is, tuple<Ts...>& t)
+{
+	tuple_in<0, Ts...>(is, t);
+	return is;
+}
+
+
+template<typename T, typename U>
+ostream& operator << (ostream& os, const pair<T, U>& t)
+{
+	os<<'('<<t.first<<", "<<t.second<<')';
+	return os;
+}
+
 template<int N, typename... Ts, typename enable_if<N == sizeof...(Ts)-1>::type*& = enabler>
 void tuple_out(ostream &os,const tuple<Ts...> &t)
 {
