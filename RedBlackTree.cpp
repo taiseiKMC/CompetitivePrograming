@@ -179,6 +179,7 @@ class RBTree
 			size_t depth;
 		};
 		Compare compare;
+		RBTree(shared_ptr<Node> root_):root(root_){}
 
 		shared_ptr<Node> rotate(shared_ptr<Node> ptr, const Side s)
 		{
@@ -224,6 +225,126 @@ class RBTree
 				node = node->child[Side::Left];
 			}
 			return i;
+		}
+
+		void _remove(shared_ptr<Node> node)
+		{
+			if(node->child[Side::Right] && node->child[Side::Left])
+			{
+				auto rep = getMaxNode(node->child[Side::Left]);
+				T value = rep->value;
+				_remove(rep);
+				node->value=value;
+			}
+			else
+			{
+				shared_ptr<Node> chi;
+				if(node->child[Side::Left])
+					chi = node->child[Side::Left];
+				else
+					chi = node->child[Side::Right];
+
+				if(node->color == Color::Red || chi && chi->color == Color::Red)
+				{
+					if(node == root)
+					{
+						//chi exists
+						root = chi;
+						chi->parent = weak_ptr<Node>();
+						chi->color = Color::Black;
+					}
+					else
+					{
+						auto s = node->getParentSide();
+						if(!chi)
+						{
+							node->parent.lock()->child[s] = shared_ptr<Node>();
+						}
+						else
+						{
+							node->parent.lock()->child[s] = chi;
+							chi->parent = node->parent;
+							chi->color = Color::Black;
+						}
+					}
+					return;
+				}
+				
+				auto nodeptr = node;
+				while(true)
+				{
+					//node->color=black
+					if(root==node) break;
+					auto bros = node->getBrother();
+					auto par = node->parent.lock();
+					Side nodeside = node->getParentSide();
+					if(bros->color == Color::Red)
+					{
+						par->color = Color::Red;
+						bros->color = Color::Black;
+
+						rotate(par, nodeside);
+						bros = par->child[!nodeside];
+					}
+					//bros=black
+					if((!bros->child[Side::Left] || bros->child[Side::Left]->color == Color::Black) &&
+						(!bros->child[Side::Right] || bros->child[Side::Right]->color == Color::Black))
+					{
+						if(par->color == Color::Black)
+						{
+							bros->color = Color::Red;
+							node = par;
+							continue;
+						}
+						else
+						{
+							bros->color = Color::Red;
+							par->color = Color::Black;
+							break;
+						}
+					}
+					
+					bool broschildred[2];
+					broschildred[Side::Left] = bros->child[Side::Left] && bros->child[Side::Left]->color == Color::Red;
+					broschildred[Side::Right] = bros->child[Side::Right] && bros->child[Side::Right]->color == Color::Red;
+					if(broschildred[nodeside] && !broschildred[!nodeside])
+					{
+						par->child[!nodeside] = rotate(bros, !nodeside);
+						bros = par->child[!nodeside];
+					}
+					//bros = black, bros->child[1-nodeside] = Color::Red
+					bros->color = par->color;
+					bros->child[1-nodeside]->color = Color::Black;
+					par->color = Color::Black;
+					par = rotate(par, nodeside);
+					break;
+				}
+
+
+				if(nodeptr == root)
+				{
+					if(chi)
+					{
+						root = chi;
+						chi->parent = weak_ptr<Node>();
+					}
+					else
+						root = shared_ptr<Node>();
+				}
+				else
+				{
+					auto s = nodeptr->getParentSide();
+					if(chi)
+					{
+						nodeptr->parent.lock()->child[s]=chi;
+						chi->parent = nodeptr->parent;
+					}
+					else
+					{
+						nodeptr->parent.lock()->child[s] = shared_ptr<Node>();
+					}
+				}
+			}
 		}
 
 		static shared_ptr<Node> joinLeft(const ND& l, const T& k, const ND& r)
@@ -387,6 +508,58 @@ class RBTree
 		using Iterator = RBTreeIterator<T, Compare>;
 		shared_ptr<Node> root;
 		RBTree():root(shared_ptr<Node>()){}
+		RBTree(const initializer_list<const T>& list)
+		{
+			const size_t len = static_cast<size_t>(list.size());
+			vector<shared_ptr<Node>> ptrs(len);
+			size_t blacks = 1;
+			while(blacks-1 <= len)
+				blacks<<=1;
+			blacks = (blacks>>1)-1;
+			size_t j = blacks == len ? (((blacks+1)>>1)-1) : blacks;
+			auto iter = list.begin();
+			for(size_t i=0; i<len; i++)
+			{
+				Color c = i < blacks ? Color::Black : Color::Red;
+				auto&& v = *iter;
+				ptrs[j] = make_shared<Node>(Node(v, c));
+				iter++;
+
+				if((j<<1)+2 < len)
+				{
+					j = (j<<1)+2;
+					while((j<<1)+1 < len)
+						j=(j<<1)+1;
+				}
+				else
+				{
+					while(j>0)
+					{
+						if(j % 2 == 1)
+						{
+							j=j>>1;
+							break;
+						}
+						else
+							j=(j-2)>>1;
+					}
+				}
+			}
+			for(size_t i=0; i<len; i++)
+			{
+				if((i<<1)+1 < len)
+				{
+					ptrs[i]->child[Side::Left] = ptrs[(i<<1)+1];
+					ptrs[(i<<1)+1]->parent = ptrs[i];
+				}
+				if((i<<1)+2 < len)
+				{
+					ptrs[i]->child[Side::Right] = ptrs[(i<<1)+2];
+					ptrs[(i<<1)+2]->parent = ptrs[i];
+				}
+			}
+			root = ptrs[0];
+		}
 
 		void add(const T& x)
 		{
@@ -444,123 +617,7 @@ class RBTree
 		{
 			auto node = findNode(x);
 			if(node->value != x) return; //not found
-			if(node->child[Side::Right] && node->child[Side::Left])
-			{
-				auto rep = getMaxNode(node->child[Side::Left]);
-				T value = rep->value;
-				remove(rep->value);
-				node->value=value;
-			}
-			else
-			{
-				shared_ptr<Node> chi;
-				if(node->child[Side::Left])
-					chi = node->child[Side::Left];
-				else
-					chi = node->child[Side::Right];
-
-				if(node->color == Color::Red || chi && chi->color == Color::Red)
-				{
-					if(node == root)
-					{
-						//chi exists
-						root = chi;
-						chi->parent = weak_ptr<Node>();
-						chi->color = Color::Black;
-					}
-					else
-					{
-						auto s = node->getParentSide();
-						if(!chi)
-						{
-							node->parent.lock()->child[s] = shared_ptr<Node>();
-						}
-						else
-						{
-							node->parent.lock()->child[s] = chi;
-							chi->parent = node->parent;
-							chi->color = Color::Black;
-						}
-					}
-					return;
-				}
-				
-				auto nodeptr = node;
-				while(true)
-				{
-					//node->color=black
-					if(root==node) break;
-					auto bros = node->getBrother();
-					auto par = node->parent.lock();
-					Side nodeside = node->getParentSide();
-					if(bros->color == Color::Red)
-					{
-						par->color = Color::Red;
-						bros->color = Color::Black;
-
-						rotate(par, nodeside);
-						bros = par->child[!nodeside];
-					}
-					//bros=black
-					if((!bros->child[Side::Left] || bros->child[Side::Left]->color == Color::Black) &&
-						(!bros->child[Side::Right] || bros->child[Side::Right]->color == Color::Black))
-					{
-						if(par->color == Color::Black)
-						{
-							bros->color = Color::Red;
-							node = par;
-							continue;
-						}
-						else
-						{
-							bros->color = Color::Red;
-							par->color = Color::Black;
-							break;
-						}
-					}
-					
-					bool broschildred[2];
-					broschildred[Side::Left] = bros->child[Side::Left] && bros->child[Side::Left]->color == Color::Red;
-					broschildred[Side::Right] = bros->child[Side::Right] && bros->child[Side::Right]->color == Color::Red;
-					if(broschildred[nodeside] && !broschildred[!nodeside])
-					{
-						par->child[!nodeside] = rotate(bros, !nodeside);
-						bros = par->child[!nodeside];
-					}
-					//bros = black, bros->child[1-nodeside] = Color::Red
-					bros->color = par->color;
-					bros->child[1-nodeside]->color = Color::Black;
-					par->color = Color::Black;
-					par = rotate(par, nodeside);
-					break;
-				}
-
-
-				if(nodeptr == root)
-				{
-					if(chi)
-					{
-						root = chi;
-						chi->parent = weak_ptr<Node>();
-					}
-					else
-						root = shared_ptr<Node>();
-				}
-				else
-				{
-					auto s = nodeptr->getParentSide();
-					if(chi)
-					{
-						nodeptr->parent.lock()->child[s]=chi;
-						chi->parent = nodeptr->parent;
-					}
-					else
-					{
-						nodeptr->parent.lock()->child[s] = shared_ptr<Node>();
-					}
-				}
-			}
-
+			_remove(x);
 		}
 
 		static RBTree<T> merge(RBTree<T>&& t0, RBTree<T>&& t1)
@@ -569,9 +626,7 @@ class RBTree
 			if(t1.size() == 0) return t0;
 
 			auto nd = _merge(ND{t0.root, t0.depth()}, ND{t1.root, t1.depth()});
-			RBTree<T> ret;
-			ret.root = nd.node;
-			return ret;
+			return RBTree<T>(nd.node);
 		}
 		RBTree<T> & merge(RBTree<T>&& t)
 		{
