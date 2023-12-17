@@ -14,7 +14,6 @@ enum Color : int
 	Red,
 };
 
-
 template<typename T>
 class RBNode : public enable_shared_from_this<RBNode<T>>
 {
@@ -427,6 +426,14 @@ class RBTree
 				return ND{node, depth};
 			}
 		}
+		static ND join2(const ND& l, const ND& r)
+		{
+			if(!l.node) return r;
+			auto node = getMaxNode(l.node);
+			auto&& v = node->value;
+			auto [nd, b, _] = split(l, v);
+			return join(nd, v, r);
+		}
 
 		static tuple<ND, bool, ND> split(ND nd, const T& key)
 		{
@@ -502,6 +509,37 @@ class RBTree
 			auto left = _merge(left0, ND{t1.node->child[Side::Left], d});
 			auto right = _merge(right0, ND{t1.node->child[Side::Right], d});
 			return join(left, t1.node->value, right);
+		}
+		static ND _intersect(const ND& t0, const ND& t1)
+		{
+			if(!t0.node || !t1.node) return ND{shared_ptr<Node>(), 0};
+
+			auto d = t1.depth - (t1.node->color == Color::Black ? 1 : 0);
+			ND left0, right0;
+			bool b;
+			tie(left0, b, right0) = split(t0, t1.node->value);
+
+			auto left = _intersect(left0, ND{t1.node->child[Side::Left], d});
+			auto right = _intersect(right0, ND{t1.node->child[Side::Right], d});
+
+			if(b)
+				return join(left, t1.node->value, right);
+			else
+				return join2(left, right);
+		}
+		static ND _diff(const ND& t0, const ND& t1)
+		{
+			if(!t0.node) return ND{shared_ptr<Node>(), 0};
+			if(!t1.node) return t0;
+
+			auto d = t1.depth - (t1.node->color == Color::Black ? 1 : 0);
+			ND left0, right0;
+			bool b;
+			tie(left0, b, right0) = split(t0, t1.node->value);
+
+			auto left = _diff(left0, ND{t1.node->child[Side::Left], d});
+			auto right = _diff(right0, ND{t1.node->child[Side::Right], d});
+			return join2(left, right);
 		}
 
 	public:
@@ -642,6 +680,30 @@ class RBTree
 			// if(!t.root) then just return this itself
 			return *this;
 		}
+		
+		static RBTree<T> intersect(RBTree<T>&& t0, RBTree<T>&& t1)
+		{
+			auto nd = _intersect(ND{t0.root, t0.depth()}, ND{t1.root, t1.depth()});
+			return RBTree<T>(nd.node);
+		}
+		RBTree<T>& intersect(RBTree<T>&& t)
+		{
+			auto nd = _intersect(ND{root, depth()}, ND{t.root, t.depth()});
+			root = nd.node;
+			return *this;
+		}
+
+		static RBTree<T> diff(RBTree<T>&& t0, RBTree<T>&& t1)
+		{
+			auto nd = _diff(ND{t0.root, t0.depth()}, ND{t1.root, t1.depth()});
+			return RBTree<T>(nd.node);
+		}
+		RBTree<T>& diff(RBTree<T>&& t)
+		{
+			auto nd = _diff(ND{root, depth()}, ND{t.root, t.depth()});
+			root = nd.node;
+			return *this;
+		}
 
 		template<T compare>
 		inline T __bound(const T& x) const
@@ -674,7 +736,6 @@ class RBTree
 		{
 			return __bound<Compare>(x);
 		}
-
 
 		bool contain(const T& x) const
 		{
@@ -722,40 +783,82 @@ class RBTree
 	public:
 		shared_ptr<RBNode<T>> root;
 		RBTree();
+		RBTree(const initializer_list<const T>&);
 		void add(const T&);
 		void remove(const T&);
 		static RBTree<T, Compare> merge(RBTree<T, Compare>&&, RBTree<T, Compare>&&);
 		RBTree<T, Compare>& merge(RBTree<T, Compare>&&);
+		static RBTree<T, Compare> intersect(RBTree<T, Compare>&&, RBTree<T, Compare>&&);
+		RBTree<T, Compare>& intersect(RBTree<T, Compare>&&);
+		static RBTree<T, Compare> diff(RBTree<T, Compare>&&, RBTree<T, Compare>&&);
+		RBTree<T, Compare>& diff(RBTree<T, Compare>&&);
 		T upper_bound(const T&) const;
 		T lower_bound(const T&) const;
 		bool contain(const T&) const;
+		RBTreeIterator<T> begin() const;
+		RBTreeIterator<T> end() const;
 		void debug_print() const;
 };
 */
 
-
 int main()
 {
 	mt19937 mt(0);
-
+	
 	RBTree<int> t0, t1;
 	int n = read<int>();
 	int m = read<int>();
-	VI ary(n+m);
+	int k = read<int>();
+	VI ary(n+k+m);
 	iota(ALL(ary), 0);
 	shuffle(ALL(ary), mt);
-	REP(i,n)
+	REP(i,n+k)
 		t0.add(ary[i]);
-	REP(i,m)
+	REP(i,k+m)
 		t1.add(ary[i+n]);
-	t0.add(0);
+
 	t0.debug_print();
 	t1.debug_print();
 
-	auto tree = t0.merge(move(t1));
+	auto print_tree = [](auto&& tree){
+		for(auto&& i = tree.begin(); i != tree.end(); ++i)
+			cout<<*i<<" ";
+		cout<<endl;
+	};
+
+	print_tree(t0);
+	print_tree(t1);
+
+	auto tree = t1.merge(move(t0));
 	tree.debug_print();
-	for(RBTree<int>::Iterator i = begin(tree); i != tree.end(); ++i)
-	{
-		print(*i);
-	}
+	print_tree(tree);
+
+	
+	t0 = RBTree<int>();
+	t1 = RBTree<int>();
+	REP(i,n+k)
+		t0.add(ary[i]);
+	REP(i,k+m)
+		t1.add(ary[i+n]);
+		
+	tree = RBTree<int>::intersect(move(t0), move(t1));
+	tree.debug_print();
+	print_tree(tree);
+
+	t0 = RBTree<int>();
+	t1 = RBTree<int>();
+	REP(i,n+k)
+		t0.add(ary[i]);
+	REP(i,k+m)
+		t1.add(ary[i+n]);
+		
+	tree = RBTree<int>::diff(move(t0), move(t1));
+	tree.debug_print();
+	print_tree(tree);
+
+	RBTree<int> t{0, 2, 4, 5, 10, 11};
+	print_tree(t);
+	print_tree(RBTree<int>{0,1,2,3,4,5,6});
+	print_tree(RBTree<int>{0,1,2,3,4,5,6,7});
+	print_tree(RBTree<int>{0,1,2,3,4,5,6,7,8});
 }
