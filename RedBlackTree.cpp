@@ -19,23 +19,22 @@ template<typename T>
 class RBNode : public enable_shared_from_this<RBNode<T>>
 {
 	public:
-		T value;
+		const T value;
 		Color color;
-		size_t size = 1;
 		shared_ptr<RBNode<T>> child[2];
 		weak_ptr<RBNode<T>> parent;
 
-		RBNode(T val, Color c):value(val),color(c)
+		RBNode(const T& val, Color c):value(val),color(c)
 		{}
 
-		shared_ptr<RBNode<T>> getBrother()
+		shared_ptr<RBNode<T>> getBrother() const
 		{
 			auto par = parent.lock();
 			if(!par) return shared_ptr<RBNode<T>>();
 			auto side = getParentSide();
 			return par->child[!side];
 		}
-		Side getParentSide()
+		Side getParentSide() const
 		{
 			auto par = parent.lock();
 			auto side = par->child[Side::Left] == this->shared_from_this() ? Side::Left : Side::Right;
@@ -56,19 +55,117 @@ class RBNode : public enable_shared_from_this<RBNode<T>>
 				par->child[ptr->getParentSide()] = top;
 				top->parent = ptr->parent;
 			}
+			else
+				top->parent = shared_ptr<RBNode<T>>();
 			ptr->parent = top;
 			return top;
 		}
+};
 
-		shared_ptr<RBNode<T>> nth(const size_t n)
+template<typename T, class Compare>
+class RBTree;
+
+template<typename T, class Compare>
+class RBTreeIterator
+{
+	using Tree = RBTree<T, Compare>;
+	struct Ptr { shared_ptr<RBNode<T>> node; bool is_end; };
+	public:
+		Tree const & tree;
+		Ptr ptr;
+
+		RBTreeIterator(Tree const & tree_, shared_ptr<RBNode<T>> node):
+		tree(tree_), ptr(Ptr{node, false})
+		{}
+		
+		RBTreeIterator(Tree const & tree_): //end of the iterator
+		tree(tree_), ptr(Ptr{shared_ptr<RBNode<T>>(), true})
+		{}
+
+		RBTreeIterator& operator++()
 		{
-			size_t c = child[Side::Left] ? child[Side::Left]->size : 0;
-			if(c == n)
-				return this->shared_from_this();
-			auto s = static_cast<Side>(n > c);
-			return child[s]->nth(n - (s ? (c + 1) : 0));
+			auto&& node = ptr.node;
+			if(node->child[Side::Right])
+			{
+				node = node->child[Side::Right];
+				while(node->child[Side::Left])
+					node = node->child[Side::Left];
+				return *this;
+			}
+			while(auto par = node->parent.lock())
+			{
+				if(node->getParentSide() == Side::Left)
+				{
+					node = par;
+					return *this;
+				}
+				else
+					node = par;
+			}
+			// Reach to the end
+			ptr.is_end = true;
+			return *this;
+		}
+		RBTreeIterator& operator--()
+		{
+			auto&& node = ptr.node;
+			if(ptr.is_end)
+			{
+				node = tree.root;
+				while(node->child[Side::Right])
+					node = node->child[Side::Right];
+				ptr.is_end = false;
+				return *this;
+			}
+
+			if(node->child[Side::Left])
+			{
+				node = node->child[Side::Left];
+				while(node->child[Side::Right])
+					node = node->child[Side::Right];
+				return *this;
+			}
+			while(auto par = node->parent.lock())
+			{
+				if(node->getParentSide() == Side::Right)
+				{
+					node = par;
+					return *this;
+				}
+				else
+					node = par;
+			}
+			return *this;
+		}
+		
+		bool operator==(const RBTreeIterator& rhs)
+		{
+			return (ptr.is_end && rhs.ptr.is_end) || ptr.node == rhs.ptr.node;
+		}
+		bool operator!=(const RBTreeIterator& rhs)
+		{
+			return !(*this == rhs);
+		}
+		
+		auto operator*()
+		{
+			return ptr.node.get()->value;
 		}
 
+		auto prev(const int n = 1)
+		{
+			RBTreeIterator<T, Compare> iter(*this);
+			for(int i = 0; i < n; i++)
+				--iter;
+			return iter;
+		}
+		auto next(const int n = 1)
+		{
+			RBTreeIterator<T, Compare> iter(*this);
+			for(int i = 0; i < n; i++)
+				++iter;
+			return iter;
+		}
 };
 
 template<typename T, class Compare = less<T>>
@@ -108,6 +205,25 @@ class RBTree
 					node = node->child[Side::Right];
 			}
 			return pre;
+		}
+		static shared_ptr<Node> getMaxNode(shared_ptr<Node> ptr)
+		{
+			while(ptr->child[Side::Right])
+				ptr = ptr->child[Side::Right];
+			return ptr;
+		}
+
+		//the number of black nodes in a way from root to a leaf
+		size_t depth() const
+		{
+			size_t i = 0;
+			auto node = root;
+			while(node)
+			{
+				if(node->color == Color::Black) i++;
+				node = node->child[Side::Left];
+			}
+			return i;
 		}
 
 		static shared_ptr<Node> joinLeft(const ND& l, const T& k, const ND& r)
@@ -199,12 +315,12 @@ class RBTree
 			{
 				auto l = ND{node->child[Side::Left], d};
 				auto r = ND{node->child[Side::Right], d};
-				if(l.node->color == Color::Red)
+				if(l.node && l.node->color == Color::Red)
 				{
 					l.node->color = Color::Black;
 					l.depth++;
 				}
-				if(r.node->color == Color::Red)
+				if(r.node && r.node->color == Color::Red)
 				{
 					r.node->color = Color::Black;
 					r.depth++;
@@ -262,32 +378,15 @@ class RBTree
 			bool b;
 			tie(left0, b, right0) = split(t0, t1.node->value);
 
-			/*
-			printd("split:", t1.node->value, (int)left0.depth, (int)right0.depth);
-			RBTree<T> tree;
-			tree.root = left0.node;
-			tree.debug_print2();
-			tree.root = right0.node;
-			tree.debug_print2();
-			*/
-
 			auto left = _merge(left0, ND{t1.node->child[Side::Left], d});
 			auto right = _merge(right0, ND{t1.node->child[Side::Right], d});
-
-			/*
-			printd("dmerge:", (int)left.depth, (int)right.depth);
-			tree.root = left.node;
-			tree.debug_print2();
-			tree.root = right.node;
-			tree.debug_print2();
-			*/
-
 			return join(left, t1.node->value, right);
 		}
 
 	public:
+		using Iterator = RBTreeIterator<T, Compare>;
 		shared_ptr<Node> root;
-		RBTree(){}
+		RBTree():root(shared_ptr<Node>()){}
 
 		void add(const T& x)
 		{
@@ -340,12 +439,6 @@ class RBTree
 				rotate(grandpar, !parside);
 				break;
 			}
-		}
-		shared_ptr<Node> getMaxNode(shared_ptr<Node> ptr) const
-		{
-			while(ptr->child[Side::Right])
-				ptr = ptr->child[Side::Right];
-			return ptr;
 		}
 		void remove(const T& x)
 		{
@@ -482,15 +575,16 @@ class RBTree
 		}
 		RBTree<T> & merge(RBTree<T>&& t)
 		{
-			if(size() == 0)
+			if(!root)
 			{
 				root = t.root;
 			}
-			else if(t.size() != 0)
+			else if(t.root)
 			{
 				auto nd = _merge(ND{root, depth()}, ND{t.root, t.depth()});
 				root = nd.node;
 			}
+			// if(!t.root) then just return this itself
 			return *this;
 		}
 
@@ -532,44 +626,20 @@ class RBTree
 			auto node = findNode(x);
 			return node->value==x;
 		}
-		size_t size() const
+		Iterator begin() const
 		{
-			return root ? root->size : 0;
+			if(!root) return end();
+			shared_ptr<Node> ptr = root;
+			while(ptr->child[Side::Left])
+				ptr = ptr->child[Side::Left];
+			return Iterator(*this, ptr);
 		}
-
-		//the number of black nodes in a way from root to a leaf
-		size_t depth() const
+		Iterator end() const
 		{
-			size_t i = 0;
-			auto node = root;
-			while(node)
-			{
-				if(node->color == Color::Black) i++;
-				node = node->child[Side::Left];
-			}
-			return i;
-		}
-		T nth(const size_t n) const
-		{
-			return root->nth(n)->value;
+			return Iterator(*this);
 		}
 
 		void debug_print() const
-		{
-			vector<T> ary;
-			function<void(shared_ptr<Node>)> f = [&](shared_ptr<Node> ptr)
-			{
-				if(ptr->child[Side::Left])
-					f(ptr->child[Side::Left]);
-				ary.push_back(ptr->value);
-				if(ptr->child[Side::Right])
-					f(ptr->child[Side::Right]);
-			};
-			if(root)
-				f(root);
-			printd(ary);
-		}
-		void debug_print2() const
 		{
 			vector<T> ary;
 			function<void(shared_ptr<Node>)> f = [&](shared_ptr<Node> ptr)
@@ -589,6 +659,26 @@ class RBTree
 		}
 };
 
+
+/*
+template<typename T, class Compare>
+class RBTree
+{
+	public:
+		shared_ptr<RBNode<T>> root;
+		RBTree();
+		void add(const T&);
+		void remove(const T&);
+		static RBTree<T, Compare> merge(RBTree<T, Compare>&&, RBTree<T, Compare>&&);
+		RBTree<T, Compare>& merge(RBTree<T, Compare>&&);
+		T upper_bound(const T&) const;
+		T lower_bound(const T&) const;
+		bool contain(const T&) const;
+		void debug_print() const;
+};
+*/
+
+
 int main()
 {
 	mt19937 mt(0);
@@ -604,10 +694,13 @@ int main()
 	REP(i,m)
 		t1.add(ary[i+n]);
 	t0.add(0);
-	t0.debug_print2();
-	t1.debug_print2();
+	t0.debug_print();
+	t1.debug_print();
 
 	auto tree = t0.merge(move(t1));
-	tree.debug_print2();
 	tree.debug_print();
+	for(RBTree<int>::Iterator i = begin(tree); i != tree.end(); ++i)
+	{
+		print(*i);
+	}
 }
