@@ -22,6 +22,7 @@ class RBTreeIterator //Bidirectional Iterator like
 		RBTreeIterator& operator--();
 		bool operator==(const RBTreeIterator& rhs)
 		{
+			//ignore the equality of Tree
 			return (ptr.is_end && rhs.ptr.is_end) || ptr.node == rhs.ptr.node;
 		}
 		bool operator!=(const RBTreeIterator& rhs)
@@ -79,7 +80,7 @@ class RBTree
 		};
 		Compare compare;
 		Ptr root;
-		RBTree(Ptr root_):root(root_){}
+		RBTree(const Ptr& root_):root(root_){}
 		
 		static Ptr getMaxNode(Ptr ptr)
 		{
@@ -105,19 +106,20 @@ class RBTree
 			return pre->value;
 		}
 
-		Ptr rotate(Ptr ptr, const Side s);
-		Ptr findNode(const T& x) const;
+		Ptr rotate(const Ptr&, const Side);
+		Ptr findNode(const T&) const;
 
 		size_t depth() const; //the number of black nodes in a way from root to a leaf
-		void _remove(Ptr node);
-		static Ptr joinLeft(const ND& l, const T& k, const ND& r);
-		static Ptr joinRight(const ND& l, const T& k, const ND& r);
-		static ND join(const ND& l, const T& k, const ND& r);
-		static ND join2(const ND& l, const ND& r);
-		static tuple<ND, bool, ND> split(ND nd, const T& key);
-		static ND _merge(const ND& t0, const ND& t1);
-		static ND _intersect(const ND& t0, const ND& t1);
-		static ND _diff(const ND& t0, const ND& t1);
+		void _remove(Ptr);
+		static Ptr joinLeft(const ND&, const T&, const ND&);
+		static Ptr joinRight(const ND&, const T&, const ND&);
+		static ND join(const ND&, const T&, const ND&);
+		static ND join2(const ND&, const ND&);
+		static tuple<ND, bool, ND> split(ND , const T&);
+		static ND _merge(const ND&, const ND&);
+		static ND _intersect(const ND&, const ND&);
+		static ND _diff(const ND&, const ND&);
+		void checkInvariant();
 
 	public:
 		RBTree():root(Ptr()){}
@@ -199,28 +201,29 @@ class RBNode : public enable_shared_from_this<RBNode<T>>
 			auto side = par->child[Side::Left] == this->shared_from_this() ? Side::Left : Side::Right;
 			return side;
 		}
+		inline void setChild(Side s, shared_ptr<RBNode<T>> child)
+		{
+			this->child[s] = child;
+			if(child) child->parent = this->shared_from_this();
+		}
+		inline static Color getColor(shared_ptr<RBNode<T>> node) //treat null as a black node
+		{
+			return !node ? Black : node->color;
+		}
 		
-		static shared_ptr<RBNode<T>> rotate(shared_ptr<RBNode<T>>, const Side);
+		static shared_ptr<RBNode<T>> rotate(const shared_ptr<RBNode<T>>&, const Side);
 };
 
 template<typename T>
-shared_ptr<RBNode<T>> RBNode<T>::rotate(shared_ptr<RBNode<T>> ptr, const Side s)
+shared_ptr<RBNode<T>> RBNode<T>::rotate(const shared_ptr<RBNode<T>>& ptr, const Side s)
 {
 	auto top = ptr->child[!s];
-	ptr->child[!s] = top->child[s];
-	top->child[s] = ptr;
-	if(ptr->child[!s])
-	{
-		ptr->child[!s]->parent = ptr;
-	}
 	if(auto par = ptr->parent.lock())
-	{
-		par->child[ptr->getParentSide()] = top;
-		top->parent = ptr->parent;
-	}
+		par->setChild(ptr->getParentSide(), top);
 	else
 		top->parent = shared_ptr<RBNode<T>>();
-	ptr->parent = top;
+	ptr->setChild(!s, top->child[s]);
+	top->setChild(s, ptr);
 	return top;
 }
 
@@ -284,7 +287,7 @@ RBTreeIterator<T, Compare>& RBTreeIterator<T, Compare>::operator--()
 }
 
 template<typename T, class Compare>
-shared_ptr<RBNode<T>> RBTree<T, Compare>::rotate(Ptr ptr, const Side s)
+shared_ptr<RBNode<T>> RBTree<T, Compare>::rotate(const Ptr& ptr, const Side s)
 {
 	auto top = Node::rotate(ptr, s);
 	if(root == ptr)
@@ -336,10 +339,7 @@ void RBTree<T, Compare>::_remove(Ptr node)
 		//node->value = rep->value;
 
 		for(Side s : {Left, Right})
-		{
-			rep->child[s] = node->child[s];
-			if(rep->child[s]) rep->child[s]->parent = rep;
-		}
+			rep->setChild(s, node->child[s]);
 		rep->parent = node->parent;
 		if(auto par = node->parent.lock())
 		{
@@ -349,13 +349,9 @@ void RBTree<T, Compare>::_remove(Ptr node)
 	}
 	else
 	{
-		Ptr chi;
-		if(node->child[Side::Left])
-			chi = node->child[Side::Left];
-		else
-			chi = node->child[Side::Right];
+		auto chi = node->child[Side::Left] ? node->child[Side::Left] : node->child[Side::Right];
 
-		if(node->color == Color::Red || (chi && chi->color == Color::Red))
+		if(node->color == Color::Red || Node::getColor(chi) == Color::Red)
 		{
 			if(node == root)
 			{
@@ -367,39 +363,41 @@ void RBTree<T, Compare>::_remove(Ptr node)
 			else
 			{
 				auto s = node->getParentSide();
-				if(!chi)
+				if(chi)
 				{
-					node->parent.lock()->child[s] = Ptr();
+					chi->color = Color::Black;
+					node->parent.lock()->setChild(s, chi);
 				}
 				else
 				{
-					node->parent.lock()->child[s] = chi;
-					chi->parent = node->parent;
-					chi->color = Color::Black;
+					node->parent.lock()->child[s] = Ptr();
 				}
 			}
 			return;
 		}
 		
+		//node has no child
 		auto nodeptr = node;
 		while(true)
 		{
-			//node->color=black
-			if(root==node) break;
+			//node->color == Black
+			if(root == node) break;
 			auto bros = node->getBrother();
 			auto par = node->parent.lock();
 			Side nodeside = node->getParentSide();
-			if(bros->color == Color::Red)
+			if(bros->color == Color::Red) //bros must exist
 			{
 				par->color = Color::Red;
 				bros->color = Color::Black;
 
 				rotate(par, nodeside);
 				bros = par->child[!nodeside];
+				//continue; //is also acceptable
 			}
-			//bros=black
-			if((!bros->child[Side::Left] || bros->child[Side::Left]->color == Color::Black) &&
-				(!bros->child[Side::Right] || bros->child[Side::Right]->color == Color::Black))
+
+			//bros->color == Black
+			if((Node::getColor(bros->child[Side::Left]) == Color::Black) &&
+				(Node::getColor(bros->child[Side::Right]) == Color::Black))
 			{
 				if(par->color == Color::Black)
 				{
@@ -415,17 +413,16 @@ void RBTree<T, Compare>::_remove(Ptr node)
 				}
 			}
 			
-			bool broschildred[2];
-			broschildred[Side::Left] = bros->child[Side::Left] && bros->child[Side::Left]->color == Color::Red;
-			broschildred[Side::Right] = bros->child[Side::Right] && bros->child[Side::Right]->color == Color::Red;
-			if(broschildred[nodeside] && !broschildred[!nodeside])
+			if(Node::getColor(bros->child[nodeside]) == Color::Red
+			  && Node::getColor(bros->child[!nodeside]) != Color::Red)
 			{
 				par->child[!nodeside] = rotate(bros, !nodeside);
 				bros = par->child[!nodeside];
 			}
-			//bros = black, bros->child[1-nodeside] = Color::Red
+			//bros = Black, bros->child[!nodeside] = Red ||
+			//bros = Red, bros->child[!nodeside] = Black
 			bros->color = par->color;
-			bros->child[1-nodeside]->color = Color::Black;
+			bros->child[!nodeside]->color = Color::Black;
 			par->color = Color::Black;
 			par = rotate(par, nodeside);
 			break;
@@ -434,50 +431,39 @@ void RBTree<T, Compare>::_remove(Ptr node)
 
 		if(nodeptr == root)
 		{
-			if(chi)
-			{
-				root = chi;
-				chi->parent = weak_ptr<Node>();
-			}
-			else
-				root = Ptr();
+			root = Ptr();
 		}
 		else
 		{
 			auto s = nodeptr->getParentSide();
-			if(chi)
-			{
-				nodeptr->parent.lock()->child[s]=chi;
-				chi->parent = nodeptr->parent;
-			}
-			else
-			{
-				nodeptr->parent.lock()->child[s] = Ptr();
-			}
+			nodeptr->parent.lock()->child[s] = Ptr();
 		}
 	}
+}
+
+template<typename T>
+inline int isBlack(const shared_ptr<RBNode<T>>& node)
+{
+	return node->color == Color::Black ? 1 : 0;
 }
 
 template<typename T, class Compare>
 shared_ptr<RBNode<T>> RBTree<T, Compare>::joinLeft(const ND& l, const T& k, const ND& r)
 {
-	if(!r.node || (r.node->color == Color::Black && l.depth == r.depth))
+	if(Node::getColor(r.node) == Color::Black && l.depth == r.depth)
 	{
 		auto node = make_shared<Node>(Node(k, Color::Red));
-		node->child[Side::Left] = l.node;
-		node->child[Side::Right] = r.node;
-		if(l.node) l.node->parent = node;
-		if(r.node) r.node->parent = node;
+		node->setChild(Side::Left, l.node);
+		node->setChild(Side::Right, r.node);
 		return node;
 	}
 	//depthLeft < depthRight
-	auto right = ND{r.node->child[Side::Left], r.depth - (r.node->color == Color::Black ? 1 : 0)};
+	auto right = ND{r.node->child[Side::Left], r.depth - isBlack(r.node)};
 	auto left = joinLeft(l, k, right);
-	r.node->child[Side::Left] = left;
-	left->parent = r.node;
+	r.node->setChild(Side::Left, left);
 	auto ll = left->child[Side::Left];
 	if(r.node->color == Color::Black
-		&& ll && ll->color == Color::Red
+		&& Node::getColor(ll) == Color::Red
 		&& left->color == Color::Red)
 	{
 		ll->color = Color::Black;
@@ -489,23 +475,20 @@ shared_ptr<RBNode<T>> RBTree<T, Compare>::joinLeft(const ND& l, const T& k, cons
 template<typename T, class Compare>
 shared_ptr<RBNode<T>> RBTree<T, Compare>::joinRight(const ND& l, const T& k, const ND& r)
 {
-	if(!l.node || (l.node->color == Color::Black && l.depth == r.depth))
+	if(Node::getColor(l.node) == Color::Black && l.depth == r.depth)
 	{
 		auto node = make_shared<Node>(Node(k, Color::Red));
-		node->child[Side::Left] = l.node;
-		node->child[Side::Right] = r.node;
-		if(l.node) l.node->parent = node;
-		if(r.node) r.node->parent = node;
+		node->setChild(Side::Left, l.node);
+		node->setChild(Side::Right, r.node);
 		return node;
 	}
 	//depthLeft > depthRight
-	auto left = ND{l.node->child[Side::Right], l.depth - (l.node->color == Color::Black ? 1 : 0)};
+	auto left = ND{l.node->child[Side::Right], l.depth - isBlack(l.node)};
 	auto right = joinRight(left, k, r);
-	l.node->child[Side::Right] = right;
-	right->parent = l.node;
+	l.node->setChild(Side::Right, right);
 	auto rr = right->child[Side::Right];
 	if(l.node->color == Color::Black
-		&& rr && rr->color == Color::Red
+		&& Node::getColor(rr) == Color::Red
 		&& right->color == Color::Red)
 	{
 		rr->color = Color::Black;
@@ -520,10 +503,8 @@ typename RBTree<T, Compare>::ND RBTree<T, Compare>::join(const ND& l, const T& k
 	if(l.depth == r.depth)
 	{
 		auto node = make_shared<Node>(Node(k, Color::Black));
-		node->child[Side::Left] = l.node;
-		node->child[Side::Right] = r.node;
-		if(l.node) l.node->parent = node;
-		if(r.node) r.node->parent = node;
+		node->setChild(Side::Left, l.node);
+		node->setChild(Side::Right, r.node);
 		return ND{node, l.depth + 1};
 	}
 	else
@@ -560,17 +541,20 @@ template<typename T, class Compare>
 tuple<typename RBTree<T, Compare>::ND, bool, typename RBTree<T, Compare>::ND> RBTree<T, Compare>::split(ND nd, const T& key)
 {
 	auto node = nd.node;
-	auto d = nd.depth - (node->color == Color::Black ? 1 : 0);
+	if(!node)
+		return make_tuple(ND{Ptr(), static_cast<size_t>(0)}, false, ND{Ptr(), static_cast<size_t>(0)});
+
+	auto d = nd.depth - isBlack(node);
 	if(node->value == key)
 	{
 		auto l = ND{node->child[Side::Left], d};
 		auto r = ND{node->child[Side::Right], d};
-		if(l.node && l.node->color == Color::Red)
+		if(Node::getColor(l.node) == Color::Red)
 		{
 			l.node->color = Color::Black;
 			l.depth++;
 		}
-		if(r.node && r.node->color == Color::Red)
+		if(Node::getColor(r.node) == Color::Red)
 		{
 			r.node->color = Color::Black;
 			r.depth++;
@@ -579,43 +563,19 @@ tuple<typename RBTree<T, Compare>::ND, bool, typename RBTree<T, Compare>::ND> RB
 	}
 	else if(node->value < key)
 	{
-		if(node->child[Side::Right])
-		{
-			ND rl, right;
-			bool b;
-			tie(rl, b, right) = split(ND{node->child[Side::Right], d}, key);
-			auto left = join(ND{node->child[Side::Left], d}, node->value, rl);
-			return make_tuple(left, b, right);
-		}
-		else
-		{
-			if(node->color == Color::Red)
-			{
-				node->color = Color::Black;
-				nd.depth++;
-			}
-			return make_tuple(nd, false, ND{Ptr(), static_cast<size_t>(0)});
-		}
+		ND rl, right;
+		bool b;
+		tie(rl, b, right) = split(ND{node->child[Side::Right], d}, key);
+		auto left = join(ND{node->child[Side::Left], d}, node->value, rl);
+		return make_tuple(left, b, right);
 	}
 	else
 	{
-		if(node->child[Side::Left])
-		{
-			ND left, lr;
-			bool b;
-			tie(left, b, lr) = split(ND{node->child[Side::Left], d}, key);
-			auto right = join(lr, node->value, ND{node->child[Side::Right], d});
-			return make_tuple(left, b, right);
-		}
-		else
-		{
-			if(node->color == Color::Red)
-			{
-				node->color = Color::Black;
-				nd.depth++;
-			}
-			return make_tuple(ND{Ptr(), static_cast<size_t>(0)}, false, nd);
-		}
+		ND left, lr;
+		bool b;
+		tie(left, b, lr) = split(ND{node->child[Side::Left], d}, key);
+		auto right = join(lr, node->value, ND{node->child[Side::Right], d});
+		return make_tuple(left, b, right);
 	}
 }
 
@@ -625,7 +585,7 @@ typename RBTree<T, Compare>::ND RBTree<T, Compare>::_merge(const ND& t0, const N
 	if(!t1.node) return t0;
 	if(!t0.node) return t1;
 
-	auto d = t1.depth - (t1.node->color == Color::Black ? 1 : 0);
+	auto d = t1.depth - isBlack(t1.node);
 	ND left0, right0;
 	bool b;
 	tie(left0, b, right0) = split(t0, t1.node->value);
@@ -640,7 +600,7 @@ typename RBTree<T, Compare>::ND RBTree<T, Compare>::_intersect(const ND& t0, con
 {
 	if(!t0.node || !t1.node) return ND{Ptr(), 0};
 
-	auto d = t1.depth - (t1.node->color == Color::Black ? 1 : 0);
+	auto d = t1.depth - isBlack(t1.node);
 	ND left0, right0;
 	bool b;
 	tie(left0, b, right0) = split(t0, t1.node->value);
@@ -660,7 +620,7 @@ typename RBTree<T, Compare>::ND RBTree<T, Compare>::_diff(const ND& t0, const ND
 	if(!t0.node) return ND{Ptr(), 0};
 	if(!t1.node) return t0;
 
-	auto d = t1.depth - (t1.node->color == Color::Black ? 1 : 0);
+	auto d = t1.depth - isBlack(t1.node);
 	ND left0, right0;
 	bool b;
 	tie(left0, b, right0) = split(t0, t1.node->value);
@@ -668,6 +628,29 @@ typename RBTree<T, Compare>::ND RBTree<T, Compare>::_diff(const ND& t0, const ND
 	auto left = _diff(left0, ND{t1.node->child[Side::Left], d});
 	auto right = _diff(right0, ND{t1.node->child[Side::Right], d});
 	return join2(left, right);
+}
+
+template<typename T, typename Compare>
+void RBTree<T, Compare>::checkInvariant()
+{
+	function<tuple<int,bool>(Ptr)> check = [&](Ptr node){
+		if(!node) return make_tuple(0, true);
+		auto [ld, lb] = check(node->child[Side::Left]);
+		auto [rd, rb] = check(node->child[Side::Right]);
+		assert(ld == rd);
+		auto d = ld;
+		auto b = lb && rb;
+		if(node->color == Color::Black) d++;
+		else
+		{
+			//node->color == Red
+			for(auto&& s : {Side::Left, Side::Right})
+				b &= node->child[s]->getColor() == Color::Black;
+		}
+		return make_tuple(d, b);
+	};
+	auto [_, b] = check(root);
+	assert(b);
 }
 
 template<typename T, class Compare>
@@ -736,15 +719,10 @@ void RBTree<T, Compare>::add(const T& x)
 		return;
 	}
 	auto par = findNode(x);
-	Side side;
 	if(par->value == x) return;
-	if(compare(x, par->value))
-		side = Side::Left;
-	else
-		side = Side::Right;
+	Side side = compare(x, par->value) ? Side::Left : Side::Right;
 	auto node = make_shared<Node>(Node(x, Color::Red));
-	par->child[side] = node;
-	node->parent = par;
+	par->setChild(side, node);
 	while(true)
 	{
 		if(node == root)
@@ -758,9 +736,9 @@ void RBTree<T, Compare>::add(const T& x)
 		auto uncle = par->getBrother();
 		auto grandpar = par->parent.lock();
 
-		//par->color==Color::Red, bros==null, grandpar->color==Color::Black
-		if(uncle && uncle->color == Color::Red)
+		if(Node::getColor(uncle) == Color::Red)
 		{
+			//par->color==Red, uncle==(Red || null), grandpar->color==Black
 			par->color = Color::Black;
 			grandpar->color = Color::Red;
 			uncle->color = Color::Black;
@@ -861,7 +839,7 @@ void RBTree<T, Compare>::print_svg(const string& filename) const
 {
 	ofstream fout;
 	fout.open(filename, ios::out);
-	const double vert = 10, hori = 20;
+	const double vert = 10, hori = 60;
 	//double mx = 800, my=600;
 	function<int(Ptr)> getDepth = [&](Ptr n)
 	{
