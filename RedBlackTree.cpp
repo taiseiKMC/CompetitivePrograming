@@ -18,6 +18,11 @@ class RBTreeIterator //Bidirectional Iterator like
 		tree(tree_), ptr(Ptr{shared_ptr<RBNode<T>>(), true}) {}
 
 	public:
+		using difference_type   = ptrdiff_t;
+		using value_type        = T;
+		using pointer           = T*;
+		using reference         = T&;
+		using iterator_category = bidirectional_iterator_tag;
 		RBTreeIterator& operator++();
 		RBTreeIterator& operator--();
 		bool operator==(const RBTreeIterator& rhs)
